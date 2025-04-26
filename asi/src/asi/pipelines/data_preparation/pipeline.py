@@ -1,5 +1,5 @@
 from kedro.pipeline import node, Pipeline, pipeline
-from asi.src.asi.pipelines.data_preparation.nodes import merge_datasets
+from .nodes import merge_datasets
 
 def create_pipeline(**kwargs) -> Pipeline:
     return pipeline([
