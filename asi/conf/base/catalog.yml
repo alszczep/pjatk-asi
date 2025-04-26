@@ -1,0 +1,17 @@
+# 01
+games:
+ type: pandas.CSVDataset
+ filepath: data/01_raw/games.csv
+recommendations:
+ type: pandas.CSVDataset
+ filepath: data/01_raw/recommendations.csv
+users:
+ type: pandas.CSVDataset
+ filepath: data/01_raw/users.csv
+games_metadata:
+ type: pandas.JSONDataset
+ filepath: data/01_raw/games_metadata.json
+# 02
+joined_recommendations_games:
+ type: pandas.ParquetDataset
+ filepath: data/02_intermediate/joined_recommendations_games.parquet
