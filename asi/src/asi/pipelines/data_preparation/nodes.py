@@ -8,3 +8,4 @@ def preprocess_recommendations(recommendations: pd.DataFrame) -> pd.DataFrame:
 
 def enrich_with_game_info(recommendations: pd.DataFrame, games: pd.DataFrame) -> pd.DataFrame:
     return recommendations.merge(games, on="app_id", how="left")
+
