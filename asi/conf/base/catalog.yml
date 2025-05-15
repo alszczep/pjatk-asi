@@ -12,6 +12,11 @@ games_metadata:
  type: pandas.JSONDataset
  filepath: data/01_raw/games_metadata.json
 # 02
-joined_recommendations_games:
- type: pandas.ParquetDataset
- filepath: data/02_intermediate/joined_recommendations_games.parquet
+
+cleaned_recommendations:
+  type: pandas.ParquetDataset
+  filepath: data/03_primary/cleaned_recommendations.parquet
+
+recommendations_enriched:
+  type: pandas.ParquetDataset
+  filepath: data/04_feature/recommendations_enriched.parquet
