@@ -12,27 +12,23 @@ games_metadata:
  type: pandas.JSONDataset
  filepath: data/01_raw/games_metadata.json
 # 02
-
-cleaned_recommendations:
+filtered_recommendations:
   type: pandas.ParquetDataset
-  filepath: data/03_primary/cleaned_recommendations.parquet
+  filepath: data/02_intermediate/filtered_recommendations.parquet
 
-recommendations_enriched:
+enriched_features:
   type: pandas.ParquetDataset
-  filepath: data/04_feature/recommendations_enriched.parquet
+  filepath: data/04_feature/enriched_features.parquet
 
-model_input_table:
-   type: pandas.ParquetDataset
-   filepath: data/05_model_input/table.parquet
-
-automl_model:
-   type: json.JSONDataset
-   filepath: data/06_models/automl_model_path.json
-
-model_evaluation_report:
-  type: pandas.CSVDataset
-  filepath: data/08_reporting/model_evaluation_report.csv
-
-predictions:
+training_data:
   type: pandas.ParquetDataset
-  filepath: data/08_reporting/predictions.parquet
+  filepath: data/04_feature/training_data.parquet
+
+autogluon_recommender_model:
+  type: text.TextDataset
+  filepath: data/06_models/autogluon_model_path.txt
+
+# 07_model_output - Model predictions and outputs
+recommender_evaluation:
+  type: pandas.ParquetDataset
+  filepath: data/07_model_output/recommender_evaluation.parquet

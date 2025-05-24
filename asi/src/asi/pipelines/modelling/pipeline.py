@@ -1,37 +1,21 @@
-
 from kedro.pipeline import Pipeline, node
 from .nodes import (
-    prepare_model_data,
-    train_automl_model,
-    evaluate_model,
-    predict_recommendations
+    train_autogluon_recommender,
+    evaluate_recommender
 )
 
 def create_pipeline(**kwargs):
     return Pipeline([
         node(
-            prepare_model_data,
-            inputs="recommendations_enriched",
-            outputs="model_input_table",
-            name="prepare_model_data"
+            train_autogluon_recommender,
+            inputs="training_data",
+            outputs="autogluon_recommender_model",
+            name="train_autogluon_recommender"
         ),
         node(
-            train_automl_model,
-            inputs="model_input_table",
-            outputs="automl_model",
-            name="train_model"
-        ),
-        node(
-            evaluate_model,
-            inputs=["automl_model", "model_input_table"],
-            outputs="model_evaluation_report",
-            name="evaluate_model"
-        ),
-        node(
-            predict_recommendations,
-            inputs=["automl_model", "model_input_table"],
-            outputs="predictions",
-            name="predict_recommendations"
+            evaluate_recommender,
+            inputs=["autogluon_recommender_model", "training_data"],
+            outputs="recommender_evaluation",
+            name="evaluate_recommender"
         ),
     ])
-
