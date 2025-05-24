@@ -1,3 +1,6 @@
 .idea
 .venv
 Dockerfile
+automl_model.7z
+model
+recommendations_enriched.parquet

@@ -2,11 +2,14 @@ import os
 from pydantic import BaseModel
 import gradio as gr
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 
 api_url = os.environ["API_BASE_URL"]
 
 class Game(BaseModel):
-    id: str
+    id: int
     name: str
 
 def fetch[TReturn](api_endpoint: str, params: dict[str, str] = None) -> TReturn:
@@ -29,7 +32,8 @@ def fetch_all_games() -> list[Game]:
         return []
 
 def fetch_predictions(ids: list[str]) -> list[Game]:
-    json_response = fetch("game_prediction", params={"ids": ",".join(ids)})
+    string_ids = map(lambda id: str(id), ids)
+    json_response = fetch("game_prediction", params={"ids": ",".join(string_ids)})
     if json_response:
         return list(map(
             lambda entry: Game(**entry),
@@ -38,15 +42,13 @@ def fetch_predictions(ids: list[str]) -> list[Game]:
     else:
         return []
 
-
-
-games = fetch_all_games()
-choices = list(map(lambda game: (game.name, game.id), games))
+all_games = fetch_all_games()
+choices = list(map(lambda game: (game.name, game.id), all_games))
 
 def predict(selected_ids: list[str]):
     predictions = fetch_predictions(selected_ids)
     if predictions:
-        return f"Predicted games: {', '.join(map(lambda game: game.name, predictions))}"
+        return ",\n".join(map(lambda game: game.name, predictions))
     else:
         return "No predictions available."
 
