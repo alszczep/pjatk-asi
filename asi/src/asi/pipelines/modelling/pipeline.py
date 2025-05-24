@@ -1,7 +1,6 @@
 from kedro.pipeline import Pipeline, node
 from .nodes import (
     train_autogluon_recommender,
-    improved_generate_game_recommendations,  # Updated function name
     evaluate_recommender
 )
 
@@ -19,12 +18,4 @@ def create_pipeline(**kwargs):
             outputs="recommender_evaluation",
             name="evaluate_recommender"
         ),
-        # Optional: Add a recommendation generation node if you want it in the pipeline
-        # Uncomment the lines below if you want to generate recommendations as part of the pipeline
-        # node(
-        #     improved_generate_game_recommendations,
-        #     inputs=["autogluon_recommender_model", "enriched_features", "params:user_liked_games"],
-        #     outputs="game_recommendations",
-        #     name="generate_game_recommendations"
-        # ),
     ])

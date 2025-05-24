@@ -198,7 +198,7 @@ if __name__ == "__main__":
     # Example usage
     model_path = "data/06_models/autogluon_recommender"
     data_path = "data/04_feature/enriched_features.parquet"
-    liked_games = [33250, 8930]  # MUST HAVE TWO GAMES AT LEAST!!!!
+    liked_games = [730, 7940, 440]  # MUST HAVE TWO GAMES AT LEAST!!!!
 
     recommendations = get_recommendations(model_path, data_path, liked_games, 5)
 
