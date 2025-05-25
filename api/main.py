@@ -2,43 +2,56 @@ import os
 from flask import Flask, request
 from pydantic import BaseModel
 from azure.storage.blob import BlobServiceClient
-import py7zr
 from autogluon.tabular import TabularPredictor
 from dotenv import load_dotenv
 import pandas as pd
 from io import BytesIO
+import zipfile
+
+from test_recommender import get_recommendations
 
 load_dotenv()
 
 app = Flask(__name__)
 
 blob_storage_connection_string = os.environ["BLOB_STORAGE_CONNECTION_STRING"]
-extract_dir = os.path.join(os.getcwd(), "model")
-recommendations_enriched_path = os.path.join(os.getcwd(), "recommendations_enriched.parquet")
+model_path_base = os.getcwd()
+model_zip_path = os.path.join(model_path_base, "autogluon_recommender.zip")
+model_extract_dir = os.path.join(model_path_base, "autogluon_recommender")
+enriched_features_path_base = os.getcwd()
+enriched_features_zip_path = os.path.join(enriched_features_path_base, "enriched_features.zip")
+enriched_features_path = os.path.join(enriched_features_path_base, "enriched_features.parquet")
+
+games = None
 
 class Game(BaseModel):
     id: int
     name: str
 
 def download_and_unzip_model():
-    local_zip_path = os.path.join(os.getcwd(), "automl_model.7z")
+    if os.path.isfile(model_zip_path):
+        print("Model zip file already exists, skipping download.")
+    else:
+        print("Downloading model from blob storage...")
+        os.makedirs(os.path.dirname(model_zip_path), exist_ok=True)
 
-    if os.path.exists(extract_dir):
-        print("Model already exists, skipping download.")
+        blob_service_client = BlobServiceClient.from_connection_string(blob_storage_connection_string)
+        blob_client = blob_service_client.get_blob_client(container="model", blob="autogluon_recommender.zip")
+
+        with open(model_zip_path, "wb") as f:
+            f.write(blob_client.download_blob().readall())
+
+    if os.path.exists(model_extract_dir):
+        print("Model already exists, skipping extraction.")
         return
 
-    os.makedirs(os.path.dirname(local_zip_path), exist_ok=True)
-
-    blob_service_client = BlobServiceClient.from_connection_string(blob_storage_connection_string)
-    blob_client = blob_service_client.get_blob_client(container="model", blob="automl_model.7z")
-
-    with open(local_zip_path, "wb") as f:
-        f.write(blob_client.download_blob().readall())
-
-    with py7zr.SevenZipFile(local_zip_path, mode='r') as archive:
-        archive.extractall(path=extract_dir)
+    print(model_zip_path)
+    with zipfile.ZipFile(model_zip_path, 'r') as zip_ref:
+        zip_ref.extractall(model_path_base)
 
 def load_games_from_blob():
+    print("Loading games from blob storage...")
+
     blob_service_client = BlobServiceClient.from_connection_string(blob_storage_connection_string)
     blob_client = blob_service_client.get_blob_client(container="data", blob="games.csv")
 
@@ -48,51 +61,25 @@ def load_games_from_blob():
     df = pd.read_csv(BytesIO(csv_data))
     return df
 
-def download_recommendations_enriched_from_blob():
-    if os.path.isfile(recommendations_enriched_path):
-        print("Recommendations enriched already exists, skipping download.")
+def download_and_unzip_recommendations_enriched_from_blob():
+    if os.path.isfile(enriched_features_zip_path):
+        print("Enriched features zip file already exists, skipping download.")
+    else:
+        print("Downloading enriched features from blob storage...")
+        os.makedirs(os.path.dirname(enriched_features_zip_path), exist_ok=True)
+
+        blob_service_client = BlobServiceClient.from_connection_string(blob_storage_connection_string)
+        blob_client = blob_service_client.get_blob_client(container="data", blob="enriched_features.zip")
+
+        with open(enriched_features_zip_path, "wb") as f:
+            f.write(blob_client.download_blob().readall())
+
+    if os.path.isfile(enriched_features_path):
+        print("Enriched features already exists, skipping extraction.")
         return
 
-    blob_service_client = BlobServiceClient.from_connection_string(blob_storage_connection_string)
-    blob_client = blob_service_client.get_blob_client(container="data", blob="recommendations_enriched.parquet")
-
-    with open(recommendations_enriched_path, "wb") as f:
-        f.write(blob_client.download_blob().readall())
-
-def load_recommendations_enriched():
-    download_recommendations_enriched_from_blob()
-    return pd.read_parquet(recommendations_enriched_path)
-
-download_and_unzip_model()
-predictor = TabularPredictor.load(os.path.join(extract_dir, "automl_model"))
-games_df = load_games_from_blob()
-
-output_games_df = games_df.copy()
-output_games_df = output_games_df.rename(columns={"app_id": "id", "title": "name"})
-games = [Game(**row) for row in output_games_df.to_dict(orient="records")]
-
-recommendations_enriched_df = load_recommendations_enriched()
-
-def recommend_similar_games(game_ids: list[int], top_n: int = 10) -> pd.DataFrame:
-    all_candidates = (
-        recommendations_enriched_df[~recommendations_enriched_df["app_id"].isin(game_ids)]
-        .drop_duplicates(subset="app_id")  # ensures each game appears only once
-        .copy()
-    )
-
-    drop_cols = ["user_id", "app_id", "title", "is_recommended", "date", "review_id"]
-    all_candidates = all_candidates.drop(columns=[col for col in drop_cols if col in all_candidates.columns])
-
-    all_candidates = all_candidates.fillna(-1)
-
-    proba_df = predictor.predict_proba(all_candidates)
-    scores = proba_df[True]
-
-    top_indices = scores.sort_values(ascending=False).head(top_n).index
-    top_games = recommendations_enriched_df.loc[top_indices][["app_id", "title"]].copy()
-    top_games["score"] = scores.loc[top_indices].values
-
-    return top_games.reset_index(drop=True)
+    with zipfile.ZipFile(enriched_features_zip_path, 'r') as zip_ref:
+        zip_ref.extractall(enriched_features_path_base)
 
 @app.get("/games")
 def get_all_games():
@@ -103,11 +90,42 @@ def get_game_prediction():
     ids = request.args.get('ids')
     if ids:
         id_list = [int(id.strip()) for id in ids.split(",")]
-        recommend_similar_games_df = recommend_similar_games(id_list, top_n=10)
+        recommend_similar_games_df = get_recommendations(model_extract_dir, enriched_features_path, id_list, 5)
+
+        if recommend_similar_games_df is None:
+            return []
+
         recommend_similar_games_df = recommend_similar_games_df.rename(columns={"app_id": "id", "title": "name"})
         return [Game(**row).model_dump() for row in recommend_similar_games_df.to_dict(orient="records")]
     else:
         return []
+
+loading_state = "init"
+
+@app.before_request
+def startup():
+    global loading_state
+
+    if loading_state == "init":
+        global games
+        loading_state = "loading"
+
+        print("Downloading files...")
+
+        download_and_unzip_model()
+        games_df = load_games_from_blob()
+
+        output_games_df = games_df.copy()
+        output_games_df = output_games_df.rename(columns={"app_id": "id", "title": "name"})
+        games = [Game(**row) for row in output_games_df.to_dict(orient="records")]
+
+        download_and_unzip_recommendations_enriched_from_blob()
+
+        loading_state = "ready"
+
+        print("Files downloaded.")
+    elif loading_state == "loading":
+        print("Files downloading...")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ["API_PORT"]))

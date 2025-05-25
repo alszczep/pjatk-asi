@@ -1,3 +1,5 @@
-recommendations_enriched.parquet
-model/
-automl_model.7z
+enriched_features.zip
+enriched_features.parquet
+autogluon_recommender.zip
+autogluon_recommender
+

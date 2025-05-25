@@ -13,12 +13,15 @@ class Game(BaseModel):
     name: str
 
 def fetch[TReturn](api_endpoint: str, params: dict[str, str] = None) -> TReturn:
-    response = requests.get(f"{api_url}/{api_endpoint}", headers={ "Content-Type": "application/json" }, params=params)
+    url = f"{api_url}/{api_endpoint}"
+    response = requests.get(url, headers={ "Content-Type": "application/json" }, params=params)
     if response.status_code == 200:
         json_response = response.json()
         return json_response
     else:
-        print(f"Error fetching data from {api_endpoint}: {response.status_code}")
+        print(f"Error fetching data from {url}: {response.status_code}")
+        print(f"Response Headers: {response.headers}")
+        print(f"Response Content: {response.text}")
         return None
 
 def fetch_all_games() -> list[Game]:
