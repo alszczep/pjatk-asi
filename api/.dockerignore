@@ -1,7 +1,8 @@
 .idea
 .venv
 Dockerfile
-automl_model.7z
-model
-recommendations_enriched.parquet
+autogluon_recommender.zip
+autogluon_recommender
+enriched_features.zip
+enriched_features.parquet
 .env

@@ -192,15 +192,3 @@ def get_recommendations(model_path: str, data_path: str, liked_games: list, num_
 
     except Exception:
         return None
-
-
-if __name__ == "__main__":
-    # Example usage
-    model_path = "data/06_models/autogluon_recommender"
-    data_path = "data/04_feature/enriched_features.parquet"
-    liked_games = [730, 7940, 440]  # MUST HAVE TWO GAMES AT LEAST!!!!
-
-    recommendations = get_recommendations(model_path, data_path, liked_games, 5)
-
-    for rec in recommendations:
-        print(f"{rec['rank']}. {rec['title']} (Score: {rec['recommendation_score']:.3f})")
