@@ -1,7 +1,9 @@
 import pandas as pd
+import numpy as np
 import os
 from autogluon.tabular import TabularPredictor
 from sklearn.metrics import classification_report, roc_auc_score
+from sklearn.model_selection import train_test_split
 import warnings
 
 warnings.filterwarnings('ignore')
@@ -34,7 +36,8 @@ def train_autogluon_recommender(training_data: pd.DataFrame) -> str:
         eval_metric='roc_auc'
     ).fit(
         training_sample,
-        presets='best_quality',
+        presets='medium_quality',
+        time_limit=300,
         verbosity=1,
         ag_args_fit={
             'num_bag_folds': 3,
@@ -54,6 +57,10 @@ def train_autogluon_recommender(training_data: pd.DataFrame) -> str:
 
 def evaluate_recommender(model_path: str, training_data: pd.DataFrame) -> pd.DataFrame:
     predictor = TabularPredictor.load(model_path)
+
+    print("Available columns in training_data:")
+    print(training_data.columns.tolist())
+    print(f"Shape of training_data: {training_data.shape}")
 
     if 'is_recommended' not in training_data.columns:
         raise ValueError(
