@@ -16,12 +16,8 @@ def preprocess_recommendations(recommendations: pd.DataFrame) -> pd.DataFrame:
 
 
 def create_user_game_features(recommendations: pd.DataFrame, games: pd.DataFrame) -> pd.DataFrame:
-    print("Starting feature creation...")
-
     merged = recommendations.merge(games, on='app_id', how='left')
-    print(f"Merged data shape: {merged.shape}")
 
-    print("Creating user features...")
     user_stats = merged.groupby('user_id').agg({
         'app_id': 'count',
         'hours': ['mean', 'std', 'max', 'min'],
@@ -61,7 +57,6 @@ def create_user_game_features(recommendations: pd.DataFrame, games: pd.DataFrame
             user_stats['user_avg_hours'] + 1e-6)
     user_stats['user_price_sensitivity'] = user_stats['user_price_std'] / (user_stats['user_avg_price_paid'] + 1e-6)
 
-    print("Creating game features...")
     game_stats = merged.groupby('app_id').agg({
         'hours': ['mean', 'std', 'count', 'median'],
         'is_recommended': ['mean', 'count'],
@@ -82,11 +77,9 @@ def create_user_game_features(recommendations: pd.DataFrame, games: pd.DataFrame
     game_stats['game_hours_consistency'] = 1 / (
             1 + game_stats['game_hours_std'] / (game_stats['game_avg_hours'] + 1e-6))
 
-    print("Merging features...")
     enriched = merged.merge(user_stats, on='user_id', how='left')
     enriched = enriched.merge(game_stats, on='app_id', how='left')
 
-    print("Creating interaction features...")
     enriched['hours_vs_user_avg'] = enriched['hours'] / (enriched['user_avg_hours'] + 1e-6)
     enriched['hours_vs_game_avg'] = enriched['hours'] / (enriched['game_avg_hours'] + 1e-6)
     enriched['hours_vs_game_median'] = enriched['hours'] / (enriched['game_median_hours'] + 1e-6)
@@ -108,7 +101,6 @@ def create_user_game_features(recommendations: pd.DataFrame, games: pd.DataFrame
                                            labels=['very_short', 'short', 'medium', 'long', 'very_long'])
     enriched['playtime_category'] = enriched['playtime_category'].astype(str)
 
-    print("Filling missing values...")
     numeric_cols = enriched.select_dtypes(include=[np.number]).columns
     for col in numeric_cols:
         enriched[col] = enriched[col].fillna(enriched[col].median())
@@ -118,12 +110,10 @@ def create_user_game_features(recommendations: pd.DataFrame, games: pd.DataFrame
         if col != 'playtime_category':
             enriched[col] = enriched[col].fillna('unknown')
 
-    print(f"Final enriched data shape: {enriched.shape}")
     return enriched
 
 
 def prepare_training_data(enriched_data: pd.DataFrame, max_samples: int = 50000) -> pd.DataFrame:
-    print(f"Starting with {len(enriched_data)} total samples")
 
     essential_features = [
 
@@ -143,12 +133,10 @@ def prepare_training_data(enriched_data: pd.DataFrame, max_samples: int = 50000)
     ]
 
     available_cols = [col for col in essential_features if col in enriched_data.columns]
-    print(f"Using {len(available_cols)} features out of {len(essential_features)} requested")
 
     working_data = enriched_data[available_cols].copy()
 
     working_data = working_data.dropna(subset=['is_recommended'])
-    print(f"After dropping missing targets: {len(working_data)} samples")
 
     if len(working_data) > max_samples * 3:
         print(f"Data too large ({len(working_data)}), sampling {max_samples * 3} rows first")
@@ -164,18 +152,15 @@ def prepare_training_data(enriched_data: pd.DataFrame, max_samples: int = 50000)
         for col in top_categories:
             working_data[col.replace('playtime_', 'playtime_')] = playtime_dummies[col].astype('int8')
 
-    print("Balancing dataset with memory-efficient approach...")
 
     positive_mask = working_data['is_recommended'] == True
     positive_count = positive_mask.sum()
     negative_count = len(working_data) - positive_count
 
-    print(f"Original distribution - Positive: {positive_count}, Negative: {negative_count}")
 
     min_class_size = min(positive_count, negative_count)
     target_per_class = min(min_class_size, max_samples // 2)
 
-    print(f"Target samples per class: {target_per_class}")
 
     positive_indices = working_data[positive_mask].index
     negative_indices = working_data[~positive_mask].index
@@ -191,9 +176,5 @@ def prepare_training_data(enriched_data: pd.DataFrame, max_samples: int = 50000)
 
     del working_data
     gc.collect()
-
-    print(f"Final balanced dataset: {len(balanced_data)} samples")
-    print(f"Positive ratio: {balanced_data['is_recommended'].mean():.3f}")
-    print(f"Memory usage: {balanced_data.memory_usage(deep=True).sum() / 1024 ** 2:.1f} MB")
 
     return balanced_data
